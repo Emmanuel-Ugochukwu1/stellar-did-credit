@@ -136,6 +136,11 @@ impl RevocationRegistry {
             .unwrap_or(MAX_BATCH_SIZE)
     }
 
+    /// Returns the current admin address, or None if not initialized.
+    pub fn get_admin(env: Env) -> Option<Address> {
+        env.storage().instance().get(&RevocationKey::Admin)
+    }
+
     pub fn set_batch_limit(
         env: Env,
         admin: Address,
@@ -486,6 +491,28 @@ mod tests {
 
         let res = client.try_batch_revoke(&issuer, &vc_hashes);
         assert_eq!(res, Err(Ok(RevocationRegistryError::BatchTooLarge)));
+    }
+
+    #[test]
+    fn test_get_admin_after_initialize() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let contract_id = env.register_contract(None, RevocationRegistry);
+        let client = RevocationRegistryClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        client.initialize(&admin);
+
+        assert_eq!(client.get_admin(), Some(admin));
+    }
+
+    #[test]
+    fn test_get_admin_before_initialize() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, RevocationRegistry);
+        let client = RevocationRegistryClient::new(&env, &contract_id);
+
+        assert_eq!(client.get_admin(), None);
     }
 
     #[test]
